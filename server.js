@@ -1,51 +1,66 @@
-// backend/server.js (improved)
+// backend/server.js
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
+import path from "path";
 import authRoutes from "./routes/auth.js";
 
 dotenv.config();
 const app = express();
 
-// Optional security (uncomment/install if desired)
-// import helmet from "helmet";
-// import rateLimit from "express-rate-limit";
-// app.use(helmet());
-// const limiter = rateLimit({ windowMs: 60_000, max: 100 });
-// app.use(limiter);
-
+// JSON body parser
 app.use(express.json());
 
-// Allow multiple origins via comma-separated env var, or single FRONTEND_URL
-// Example: FRONTEND_URLS="http://localhost:3000,https://password-reset-yn39.onrender.com/"
-const rawFrontends = process.env.FRONTEND_URLS || process.env.FRONTEND_URL || "http://localhost:3000";
-const ALLOWED_ORIGINS = rawFrontends.split(",").map(s => s.trim()).filter(Boolean);
+// --- CORS Setup ---
+const rawFrontends =
+  process.env.FRONTEND_URLS ||
+  process.env.FRONTEND_URL ||
+  "http://localhost:3000";
+
+// Example: FRONTEND_URLS="http://localhost:3000,https://your-site.netlify.app"
+const ALLOWED_ORIGINS = rawFrontends
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow no-origin (e.g. server-to-server or Postman) by returning true
-    if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+    if (!origin) return callback(null, true); // allow Postman / curl
+    if (ALLOWED_ORIGINS.includes(origin)) {
       return callback(null, true);
-    } else {
-      return callback(new Error("CORS_NOT_ALLOWED_BY_SERVER"));
     }
+    console.warn(`❌ CORS blocked: ${origin}`);
+    return callback(null, false); // no headers if origin not allowed
   },
-  credentials: true,
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization","Accept"]
+  credentials: true, // enable if you send cookies
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  optionsSuccessStatus: 204,
 };
 
-// apply CORS to all routes
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // preflight handler
 
-// Simple health route for quick testing
-app.get("/health", (req, res) => res.json({ ok: true, time: Date.now(), allowedOrigins: ALLOWED_ORIGINS }));
+// --- Health check ---
+app.get("/health", (req, res) => {
+  res.json({
+    ok: true,
+    time: Date.now(),
+    allowedOrigins: ALLOWED_ORIGINS,
+  });
+});
 
-// Routes
+// --- Routes ---
 app.use("/api/auth", authRoutes);
 
+// --- Favicon handler (optional) ---
+app.use(
+  "/favicon.ico",
+  express.static(path.join(process.cwd(), "public", "favicon.ico"))
+);
+
+// --- Start server after MongoDB connection ---
 const PORT = process.env.PORT || 5000;
 
 if (!process.env.MONGO_URI) {
@@ -57,15 +72,16 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on port ${PORT}`)
+    );
   })
   .catch((err) => {
-    console.error("❌ MongoDB connection error:");
-    console.error(err);
+    console.error("❌ MongoDB connection error:", err);
     process.exit(1);
   });
 
-// graceful shutdown (nice to have)
+// --- Graceful shutdown ---
 process.on("SIGINT", () => {
   console.log("SIGINT received: closing server");
   mongoose.disconnect().then(() => process.exit(0));
