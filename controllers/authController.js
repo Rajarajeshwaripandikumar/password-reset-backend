@@ -27,7 +27,7 @@ exports.forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + (parseInt(process.env.TOKEN_EXPIRES_MINUTES || '15', 10) * 60 * 1000);
     await user.save();
 
-    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password/${token}`;
+    const resetUrl = `${process.env.CLIENT_URL || 'https://password-reset-backend-nn1u.onrender.com'}/reset-password/${token}`;
     console.log('DEBUG resetUrl:', resetUrl);
 
     // send reset email
