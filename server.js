@@ -4,21 +4,30 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
+import helmet from "helmet";
 import authRoutes from "./routes/auth.js";
 
 dotenv.config();
 const app = express();
 
+// When behind a proxy (Render, Heroku, nginx) this helps req.ip and rate-limiters
+app.set("trust proxy", true);
+
 // JSON body parser
 app.use(express.json());
 
+// security headers (lightweight)
+app.use(helmet());
+
 // --- CORS Setup ---
+// Prefer CLIENT_URL first, then FRONTEND_URLS (comma-separated), then FRONTEND_URL, then fallback to localhost
 const rawFrontends =
+  process.env.CLIENT_URL ||
   process.env.FRONTEND_URLS ||
   process.env.FRONTEND_URL ||
   "http://localhost:3000";
 
-const ALLOWED_ORIGINS = rawFrontends
+const ALLOWED_ORIGINS = String(rawFrontends)
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -46,6 +55,7 @@ app.get("/health", (req, res) => {
   res.json({
     ok: true,
     time: Date.now(),
+    clientUrl: process.env.CLIENT_URL || null,
     allowedOrigins: ALLOWED_ORIGINS,
   });
 });
@@ -71,9 +81,7 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () =>
-      console.log(`🚀 Server running on port ${PORT}`)
-    );
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);
