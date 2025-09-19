@@ -14,21 +14,20 @@ const REVEAL_ACCOUNT_EXISTENCE = process.env.REVEAL_ACCOUNT_EXISTENCE === 'true'
 
 // Prefer CLIENT_URL; fallback to the first entry in FRONTEND_URLS, then localhost dev
 // Prefer CLIENT_URL; fallback to FRONTEND_URLS, then safe defaults
-const CLIENT_URL =
+const EMAIL_BASE_URL =
+  process.env.EMAIL_BASE_URL ||
   process.env.CLIENT_URL ||
   (process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',')[0].trim() : null) ||
   (process.env.NODE_ENV === 'production'
-    ? 'https://password-reset-7.netlify.app'   // ✅  Netlify frontend URL here
-    : 'http://localhost:3000');                // ✅ local dev fallback
+    ? 'https://password-reset-backend-nn1u.onrender.com'   // ✅ backend URL in prod
+    : 'http://localhost:3000');                            // ✅ frontend for local dev
 
+function makeResetUrl(token) {
+  return `${EMAIL_BASE_URL.replace(/\/$/, '')}/reset-password/${token}`;
+}
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
-}
-
-function makeResetUrl(token) {
-  // Keep reset link pointing to frontend route that will POST to backend reset endpoint
-  return `${CLIENT_URL.replace(/\/$/, '')}/reset-password/${token}`;
 }
 
 // Forgot Password
