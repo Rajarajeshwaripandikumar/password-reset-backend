@@ -20,12 +20,14 @@ app.use(express.json());
 app.use(helmet());
 
 // --- CORS Setup ---
-// Prefer CLIENT_URL first, then FRONTEND_URLS (comma-separated), then FRONTEND_URL, then fallback to localhost
+
 const rawFrontends =
   process.env.CLIENT_URL ||
   process.env.FRONTEND_URLS ||
   process.env.FRONTEND_URL ||
-  "http://localhost:3000";
+  (process.env.NODE_ENV === "production"
+    ? "https://password-reset-7.netlify.app" // ✅  Netlify frontend
+    : "http://localhost:3000");              // ✅ dev fallback
 
 const ALLOWED_ORIGINS = String(rawFrontends)
   .split(",")
