@@ -4,32 +4,22 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
-import helmet from "helmet";
 import authRoutes from "./routes/auth.js";
 
 dotenv.config();
 const app = express();
 
-// When behind a proxy (Render, Heroku, nginx) this helps req.ip and rate-limiters
-app.set("trust proxy", true);
-
 // JSON body parser
 app.use(express.json());
 
-// security headers (lightweight)
-app.use(helmet());
-
 // --- CORS Setup ---
-
 const rawFrontends =
-  process.env.CLIENT_URL ||
   process.env.FRONTEND_URLS ||
   process.env.FRONTEND_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://password-reset-7.netlify.app" // ✅  Netlify frontend
-    : "http://localhost:3000");              // ✅ dev fallback
+  "http://localhost:3000";
 
-const ALLOWED_ORIGINS = String(rawFrontends)
+// Example: FRONTEND_URLS="http://localhost:3000,https://your-site.netlify.app"
+const ALLOWED_ORIGINS = rawFrontends
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -57,18 +47,10 @@ app.get("/health", (req, res) => {
   res.json({
     ok: true,
     time: Date.now(),
-    clientUrl: process.env.CLIENT_URL || null,
     allowedOrigins: ALLOWED_ORIGINS,
   });
 });
-const FRONTEND_URL =
-  process.env.CLIENT_URL ||
-  (process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',')[0].trim() : 'https://password-reset-7.netlify.app');
 
-app.get('/reset-password/:token', (req, res) => {
-  const token = req.params.token;
-  res.redirect(`${FRONTEND_URL.replace(/\/$/, '')}/reset-password/${encodeURIComponent(token)}`);
-});
 // --- Routes ---
 app.use("/api/auth", authRoutes);
 
@@ -90,7 +72,9 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on port ${PORT}`)
+    );
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);
