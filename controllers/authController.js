@@ -13,10 +13,14 @@ const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
 const REVEAL_ACCOUNT_EXISTENCE = process.env.REVEAL_ACCOUNT_EXISTENCE === 'true';
 
 // Prefer CLIENT_URL; fallback to the first entry in FRONTEND_URLS, then localhost dev
+// Prefer CLIENT_URL; fallback to FRONTEND_URLS, then safe defaults
 const CLIENT_URL =
   process.env.CLIENT_URL ||
   (process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',')[0].trim() : null) ||
-  'http://localhost:3000';
+  (process.env.NODE_ENV === 'production'
+    ? 'https://password-reset-7.netlify.app'   // ✅  Netlify frontend URL here
+    : 'http://localhost:3000');                // ✅ local dev fallback
+
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
