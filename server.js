@@ -61,7 +61,14 @@ app.get("/health", (req, res) => {
     allowedOrigins: ALLOWED_ORIGINS,
   });
 });
+const FRONTEND_URL =
+  process.env.CLIENT_URL ||
+  (process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',')[0].trim() : 'https://password-reset-7.netlify.app');
 
+app.get('/reset-password/:token', (req, res) => {
+  const token = req.params.token;
+  res.redirect(`${FRONTEND_URL.replace(/\/$/, '')}/reset-password/${encodeURIComponent(token)}`);
+});
 // --- Routes ---
 app.use("/api/auth", authRoutes);
 
