@@ -18,7 +18,6 @@ const rawFrontends =
   process.env.FRONTEND_URL ||
   "http://localhost:3000";
 
-// Example: FRONTEND_URLS="http://localhost:3000,https://your-site.netlify.app"
 const ALLOWED_ORIGINS = rawFrontends
   .split(",")
   .map((s) => s.trim())
