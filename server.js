@@ -20,13 +20,12 @@ app.use(express.json());
 app.use(helmet());
 
 // --- CORS Setup ---
-
 const rawFrontends =
   process.env.CLIENT_URL ||
   process.env.FRONTEND_URLS ||
   process.env.FRONTEND_URL ||
   (process.env.NODE_ENV === "production"
-    ? "https://password-reset-7.netlify.app" // ✅  Netlify frontend
+    ? "https://password-reset-7.netlify.app" // ✅ main Netlify frontend
     : "http://localhost:3000");              // ✅ dev fallback
 
 const ALLOWED_ORIGINS = String(rawFrontends)
@@ -36,14 +35,29 @@ const ALLOWED_ORIGINS = String(rawFrontends)
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow Postman / curl
+    // allow curl/Postman (no origin)
+    if (!origin) return callback(null, true);
+
+    // exact-match allowed origins from env
     if (ALLOWED_ORIGINS.includes(origin)) {
       return callback(null, true);
     }
+
+    // allow Netlify preview subdomains (e.g. <id>--password-reset-7.netlify.app)
+    try {
+      const host = new URL(origin).hostname;
+      if (host.endsWith(".netlify.app")) {
+        console.log(`✅ CORS allowed (netlify preview): ${origin}`);
+        return callback(null, true);
+      }
+    } catch (err) {
+      // ignore parse errors
+    }
+
     console.warn(`❌ CORS blocked: ${origin}`);
-    return callback(null, false); // no headers if origin not allowed
+    return callback(new Error("Not allowed by CORS"));
   },
-  credentials: true, // enable if you send cookies
+  credentials: true, // enable only if you send cookies
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   optionsSuccessStatus: 204,
@@ -61,14 +75,22 @@ app.get("/health", (req, res) => {
     allowedOrigins: ALLOWED_ORIGINS,
   });
 });
+
 const FRONTEND_URL =
   process.env.CLIENT_URL ||
-  (process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',')[0].trim() : 'https://password-reset-7.netlify.app');
+  (process.env.FRONTEND_URLS
+    ? process.env.FRONTEND_URLS.split(",")[0].trim()
+    : "https://password-reset-7.netlify.app");
 
-app.get('/reset-password/:token', (req, res) => {
+app.get("/reset-password/:token", (req, res) => {
   const token = req.params.token;
-  res.redirect(`${FRONTEND_URL.replace(/\/$/, '')}/reset-password/${encodeURIComponent(token)}`);
+  res.redirect(
+    `${FRONTEND_URL.replace(/\/$/, "")}/reset-password/${encodeURIComponent(
+      token
+    )}`
+  );
 });
+
 // --- Routes ---
 app.use("/api/auth", authRoutes);
 
