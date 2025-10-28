@@ -1,28 +1,31 @@
-// controllers/authController.js
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const validator = require("validator"); // npm i validator
-const User = require("../models/User");
+// backend/controllers/userController.js
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import validator from "validator"; // npm i validator
+import User from "../models/User.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS || "12", 10);
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1h"; // e.g. "1h", "7d"
 
-// Fail-fast if secret missing (this file is required at startup)
+// Fail-fast if secret missing (prevents insecure fallback)
 if (!JWT_SECRET) {
-  // throw so app crashes early in non-dev environments - prevents insecure fallback
-  throw new Error("Missing JWT_SECRET environment variable. Set JWT_SECRET in your .env or platform config.");
+  throw new Error(
+    "Missing JWT_SECRET environment variable. Set JWT_SECRET in your .env or platform config."
+  );
 }
 
 // Helper to build token
 function buildToken(user) {
-  // minimal claims - avoid putting sensitive or excessive data
   const payload = { sub: user._id.toString(), email: user.email };
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
-// POST /api/auth/register
-exports.registerUser = async (req, res) => {
+/**
+ * POST /api/auth/register
+ * Body: { email, password }
+ */
+export async function registerUser(req, res) {
   try {
     const { email = "", password = "" } = req.body;
 
@@ -50,14 +53,16 @@ exports.registerUser = async (req, res) => {
 
     return res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
-    // Log for server-side debugging, but don't return internal error details to clients
     console.error("registerUser error:", err && err.message ? err.message : err);
     return res.status(500).json({ message: "Server error" });
   }
-};
+}
 
-// POST /api/auth/login
-exports.loginUser = async (req, res) => {
+/**
+ * POST /api/auth/login
+ * Body: { email, password }
+ */
+export async function loginUser(req, res) {
   try {
     const { email = "", password = "" } = req.body;
 
@@ -81,25 +86,24 @@ exports.loginUser = async (req, res) => {
     // Generate JWT token
     const token = buildToken(user);
 
-    // Option A (recommended for browser apps): set HttpOnly secure cookie.
-    // In production, set cookie options: secure: true (HTTPS), sameSite: 'Lax' or 'Strict' depending on CORS needs.
+    // Option A: set HttpOnly cookie (recommended for browser-based clients)
+    // uncomment and configure cookie options if you want cookie-based auth:
     // res.cookie('token', token, {
     //   httpOnly: true,
     //   secure: process.env.NODE_ENV === 'production',
     //   sameSite: 'lax',
-    //   maxAge: 1000 * 60 * 60 // 1 hour in ms
+    //   maxAge: 1000 * 60 * 60 // e.g. 1 hour
     // });
-    // return res.status(200).json({ message: "Login successful" });
+    // return res.status(200).json({ message: 'Login successful' });
 
-    // Option B: return token in response body (still acceptable for many APIs but client must store securely)
+    // Option B: return token in response body (API clients)
     return res.status(200).json({
       message: "Login successful",
       token,
-      // optionally return a minimal user profile
-      user: { id: user._id, email: user.email },
+      user: { id: user._id, email: user.email }
     });
   } catch (err) {
     console.error("loginUser error:", err && err.message ? err.message : err);
     return res.status(500).json({ message: "Server error" });
   }
-};
+}
