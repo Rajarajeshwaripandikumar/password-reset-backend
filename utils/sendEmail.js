@@ -1,32 +1,21 @@
 // backend/utils/sendEmail.js
+import nodemailer from "nodemailer";
+import sgTransport from "nodemailer-sendgrid-transport";
 
 /* --------------------------------------------------------
    Email Utility (Render-Compatible)
-   Uses Nodemailer + SendGrid Transport
-   --------------------------------------------------------
-   Works with CommonJS (`require`) and your current
-   package.json (no need for ES module conversion).
+   Uses Nodemailer + SendGrid Transport (ESM version)
    -------------------------------------------------------- */
 
-const nodemailer = require("nodemailer");
-const sgTransport = require("nodemailer-sendgrid-transport");
-
-// --------------------------------------------------------
-// 1️⃣ Configure the SendGrid transporter
-// --------------------------------------------------------
 const transporter = nodemailer.createTransport(
   sgTransport({
     auth: {
-      api_key: process.env.SENDGRID_API_KEY, // From Render env
+      api_key: process.env.SENDGRID_API_KEY, // from Render env
     },
   })
 );
 
-// --------------------------------------------------------
-// 2️⃣ Send email wrapper function
-// --------------------------------------------------------
-async function sendEmail({ to, subject, html, text }) {
-  // Build the message
+export default async function sendEmail({ to, subject, html, text }) {
   const message = {
     from: process.env.FROM_EMAIL || "no-reply@yourdomain.com",
     to,
@@ -36,24 +25,14 @@ async function sendEmail({ to, subject, html, text }) {
   };
 
   try {
-    // Send the email
     const info = await transporter.sendMail(message);
-
-    // Log success for Render console visibility
     console.log("✅ Email sent successfully:");
     console.log("   ➤ To:", to);
     console.log("   ➤ Subject:", subject);
     console.log("   ➤ Message ID:", info && info.messageId);
-
     return info;
   } catch (err) {
-    // Log full error details for debugging
     console.error("❌ SendGrid email error:", err?.response || err.message);
     throw err;
   }
 }
-
-// --------------------------------------------------------
-// 3️⃣ Export function
-// --------------------------------------------------------
-module.exports = sendEmail;
