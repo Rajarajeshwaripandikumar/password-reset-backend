@@ -1,8 +1,8 @@
 // backend/controllers/authController.js
-const crypto = require('crypto');
-const bcrypt = require('bcrypt');
-const User = require('../models/User');
-const sendEmail = require('../utils/sendEmail');
+import crypto from 'crypto';
+import bcrypt from 'bcrypt';
+import User from '../models/User.js';
+import sendEmail from '../utils/sendEmail.js';
 
 const TOKEN_EXPIRES_MINUTES = parseInt(process.env.TOKEN_EXPIRES_MINUTES || '15', 10);
 const TOKEN_EXPIRES_MS = TOKEN_EXPIRES_MINUTES * 60 * 1000;
@@ -13,14 +13,13 @@ const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10);
 const REVEAL_ACCOUNT_EXISTENCE = process.env.REVEAL_ACCOUNT_EXISTENCE === 'true';
 
 // Prefer CLIENT_URL; fallback to the first entry in FRONTEND_URLS, then localhost dev
-// Prefer CLIENT_URL; fallback to FRONTEND_URLS, then safe defaults
 const EMAIL_BASE_URL =
   process.env.EMAIL_BASE_URL ||
   process.env.CLIENT_URL ||
   (process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(',')[0].trim() : null) ||
   (process.env.NODE_ENV === 'production'
-    ? 'https://password-reset-backend-nn1u.onrender.com'   // ✅ backend URL in prod
-    : 'http://localhost:3000');                            // ✅ frontend for local dev
+    ? 'https://password-reset-backend-nn1u.onrender.com'
+    : 'http://localhost:3000');
 
 function makeResetUrl(token) {
   return `${EMAIL_BASE_URL.replace(/\/$/, '')}/reset-password/${token}`;
@@ -31,7 +30,7 @@ function hashToken(token) {
 }
 
 // Forgot Password
-exports.forgotPassword = async (req, res) => {
+export async function forgotPassword(req, res) {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Email is required' });
@@ -59,7 +58,6 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     const resetUrl = makeResetUrl(token);
-    // log in dev only
     if (process.env.NODE_ENV !== 'production') console.debug('DEBUG resetUrl:', resetUrl);
 
     // send reset email (best-effort)
@@ -71,7 +69,8 @@ exports.forgotPassword = async (req, res) => {
           <p>You requested a password reset. Click the link below to reset your password (valid for ${TOKEN_EXPIRES_MINUTES} minutes):</p>
           <p><a href="${resetUrl}">${resetUrl}</a></p>
           <p>If you didn't request this, please ignore this email.</p>
-        `
+        `,
+        text: `Reset your password: ${resetUrl}`
       });
     } catch (emailErr) {
       // Log; do not reveal internal failures to the caller.
@@ -83,10 +82,10 @@ exports.forgotPassword = async (req, res) => {
     console.error('ERROR in forgotPassword:', err);
     return res.status(500).json({ message: 'Server error' });
   }
-};
+}
 
 // Validate Reset Token
-exports.validateResetToken = async (req, res) => {
+export async function validateResetToken(req, res) {
   try {
     const { token } = req.params;
     if (!token) return res.status(400).json({ message: 'Invalid request' });
@@ -104,10 +103,10 @@ exports.validateResetToken = async (req, res) => {
     console.error('ERROR in validateResetToken:', err);
     return res.status(500).json({ message: 'Server error' });
   }
-};
+}
 
 // Reset Password
-exports.resetPassword = async (req, res) => {
+export async function resetPassword(req, res) {
   try {
     const { token } = req.params;
     const { password } = req.body;
@@ -135,7 +134,8 @@ exports.resetPassword = async (req, res) => {
       await sendEmail({
         to: user.email,
         subject: 'Your password was changed',
-        html: `<p>Your password was successfully changed. If you did not perform this action, contact support immediately.</p>`
+        html: `<p>Your password was successfully changed. If you did not perform this action, contact support immediately.</p>`,
+        text: `Your password was successfully changed. If you did not perform this action, contact support immediately.`
       });
     } catch (emailErr) {
       console.error('Failed to send confirmation email:', emailErr);
@@ -146,4 +146,4 @@ exports.resetPassword = async (req, res) => {
     console.error('ERROR in resetPassword:', err);
     return res.status(500).json({ message: 'Server error' });
   }
-};
+}
