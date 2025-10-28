@@ -1,38 +1,36 @@
 // backend/utils/sendEmail.js
-const nodemailer = require('nodemailer');
+const nodemailer = require("nodemailer");
+const sgTransport = require("nodemailer-sendgrid-transport");
 
+// -----------------------------
+// 1️⃣ Configure the transporter
+// -----------------------------
+const transporter = nodemailer.createTransport(
+  sgTransport({
+    auth: { api_key: process.env.SENDGRID_API_KEY },
+  })
+);
+
+// -----------------------------
+// 2️⃣ Send email wrapper
+// -----------------------------
 async function sendEmail({ to, subject, html, text }) {
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: false, // true for 465, false for 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  });
-
-  // verify connection configuration (optional - useful for debugging)
-  try {
-    await transporter.verify();
-    console.log('SMTP connection OK');
-  } catch (err) {
-    console.error('SMTP connection error:', err);
-    // rethrow so caller can handle/log if needed
-    throw err;
-  }
-
   const message = {
-    from: process.env.FROM_EMAIL,
+    from: process.env.FROM_EMAIL || "no-reply@yourdomain.com",
     to,
     subject,
     text: text || undefined,
-    html: html || undefined
+    html: html || undefined,
   };
 
-  const info = await transporter.sendMail(message);
-  console.log('Email sent:', info.messageId);
-  return info;
+  try {
+    const info = await transporter.sendMail(message);
+    console.log("✅ Email sent:", info && info.messageId);
+    return info;
+  } catch (err) {
+    console.error("❌ SendGrid email error:", err);
+    throw err;
+  }
 }
 
 module.exports = sendEmail;
